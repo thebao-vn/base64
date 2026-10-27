@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Base64 Image Studio — Trình Biên Dịch Ảnh &amp; Mã Base64</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .checkerboard-light {
+      background-color: #f8fafc;
+      background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+        linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .checkerboard-dark {
+      background-color: #1e293b;
+      background-image:
+        linear-gradient(45deg, #334155 25%, transparent 25%),
+        linear-gradient(-45deg, #334155 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #334155 75%),
+        linear-gradient(-45deg, transparent 75%, #334155 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .bg-solid-dark {
+      background-color: #0f172a;
+    }
+    .bg-solid-white {
+      background-color: #ffffff;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-indigo-600 selection:text-white">
+
+  <header class="border-b border-slate-200 bg-white/95 backdrop-blur sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">Base64 Image Studio</h1>
+          </div>
+          <p class="text-xs text-slate-500">Biên dịch Ảnh ⇄ Base64 hai chiều • Tuỳ chỉnh giảm kích thước • Nhúng nhanh HTML &amp; CSS</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btnLoadSample" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+          <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Thử ảnh mẫu
+        </button>
+
+        <button id="btnResetAll" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Làm mới (Reset)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+          <button id="tabModeImgToB64" type="button" class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Ảnh ➔ Mã Base64
+          </button>
+          <button id="tabModeB64ToImg" type="button" class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            Mã Base64 ➔ Ảnh
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between lg:justify-end gap-3">
+          <label class="inline-flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
+            <input id="chkAutoCompile" type="checkbox" class="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500" checked />
+            <span>Tự động biên dịch khi tải ảnh</span>
+          </label>
+
+          <button id="btnCompileNow" type="button" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-400 text-white shadow-md shadow-indigo-500/20 transition transform active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="compileBtnLabel">BIÊN DỊCH NGAY</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <div class="lg:col-span-5 flex flex-col gap-5">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 shadow-sm h-full">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                Trạm Ảnh (Tải lên &amp; Xem trước)
+              </h2>
+              <p class="text-xs text-slate-500">Hỗ trợ PNG, JPG, WEBP, GIF, SVG, BMP, ICO, AVIF mọi kích thước</p>
+            </div>
+            <input id="fileInput" type="file" accept="image/*" class="hidden" />
+            <div class="flex items-center gap-2">
+              <button id="btnTriggerUpload" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Tải ảnh lên
+              </button>
+              <button id="btnPasteClipboardImg" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition" title="Dán ảnh từ Clipboard (Ctrl+V)">
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Dán ảnh
+              </button>
+            </div>
+          </div>
+
+          <div id="dropZone" class="relative flex-1 min-h-[250px] rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-500 transition flex flex-col items-center justify-center overflow-hidden checkerboard-light p-4 group">
+            <div id="emptyImageState" class="text-center max-w-xs space-y-3 pointer-events-none">
+              <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 mx-auto flex items-center justify-center text-indigo-600 shadow-sm">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-700">Kéo thả ảnh vào đây hoặc nhấn "Tải ảnh lên"</p>
+                <p class="text-xs text-slate-500 mt-1">Hoặc nhấn <kbd class="px-1.5 py-0.5 text-[11px] bg-white border border-slate-300 rounded text-slate-700">Ctrl + V</kbd> để dán ảnh chụp màn hình bất kỳ</p>
+              </div>
+            </div>
+
+            <div id="previewImageWrapper" class="hidden w-full h-full flex flex-col items-center justify-center">
+              <img id="previewImage" src="" alt="Preview" class="max-w-full max-h-[280px] h-auto object-contain rounded-lg shadow-md transition-transform duration-200" />
+            </div>
+
+            <div class="absolute top-2.5 right-2.5 flex items-center gap-1 bg-white/95 backdrop-blur px-2 py-1 rounded-lg border border-slate-300 text-[11px] shadow-sm">
+              <span class="text-slate-500 mr-1">Nền:</span>
+              <button type="button" data-bg="checkerboard-light" class="bg-ExplainBtn px-1.5 py-0.5 rounded bg-indigo-600 text-white font-medium">Caro sáng</button>
+              <button type="button" data-bg="checkerboard-dark" class="bg-ExplainBtn px-1.5 py-0.5 rounded text-slate-700 hover:bg-slate-100">Caro tối</button>
+              <button type="button" data-bg="bg-solid-white" class="bg-ExplainBtn px-1.5 py-0.5 rounded text-slate-700 hover:bg-slate-100">Trắng</button>
+              <button type="button" data-bg="bg-solid-dark" class="bg-ExplainBtn px-1.5 py-0.5 rounded text-slate-700 hover:bg-slate-100">Đen</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <span class="text-xs font-bold text-slate-800">Tinh chỉnh kích thước ảnh (Chỉ giảm ≤ ảnh gốc)</span>
+              </div>
+              <span id="origDimensionsLabel" class="text-[11px] font-mono text-slate-500">Gốc: —</span>
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-600 font-medium">Thanh tỷ lệ kích thước:</span>
+                <span id="scalePercentBadge" class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">100%</span>
+              </div>
+              <input id="scaleSlider" type="range" min="5" max="100" step="1" value="100" class="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg" disabled />
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] text-slate-500 mr-1">Mức chọn nhanh:</span>
+              <button type="button" data-scale="100" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-semibold bg-indigo-600 text-white border border-indigo-600 transition disabled:opacity-40" disabled>100% (Gốc)</button>
+              <button type="button" data-scale="85" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40" disabled>85%</button>
+              <button type="button" data-scale="75" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40" disabled>75%</button>
+              <button type="button" data-scale="50" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40" disabled>50%</button>
+              <button type="button" data-scale="25" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40" disabled>25%</button>
+              <button type="button" data-scale="10" class="scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40" disabled>10%</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <div>
+                <label for="inputResizeWidth" class="block text-[11px] text-slate-500 mb-1">Chiều rộng (px, tối đa bằng gốc)</label>
+                <input id="inputResizeWidth" type="number" min="1" placeholder="Rộng (px)" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500 disabled:bg-slate-100" disabled />
+              </div>
+              <div>
+                <label for="inputResizeHeight" class="block text-[11px] text-slate-500 mb-1">Chiều cao (px, tối đa bằng gốc)</label>
+                <input id="inputResizeHeight" type="number" min="1" placeholder="Cao (px)" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500 disabled:bg-slate-100" disabled />
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-100 p-3 rounded-xl border border-slate-200">
+            <div>
+              <span class="text-slate-500 block">Định dạng</span>
+              <span id="metaMime" class="font-semibold text-slate-800 font-mono">—</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Kích thước xuất</span>
+              <span id="metaDimensions" class="font-semibold text-slate-800 font-mono">—</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Dung lượng ảnh</span>
+              <span id="metaFileSize" class="font-semibold text-emerald-600 font-mono">—</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Độ dài Base64</span>
+              <span id="metaBase64Len" class="font-semibold text-indigo-600 font-mono">—</span>
+            </div>
+          </div>
+
+          <div class="pt-1 border-t border-slate-200 flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-slate-700">Tiện ích xuất &amp; tải ảnh:</span>
+              <div class="flex items-center gap-2">
+                <label for="exportFormatSelect" class="text-xs text-slate-500">Đuôi tải về:</label>
+                <select id="exportFormatSelect" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
+                  <option value="original">Giữ nguyên gốc</option>
+                  <option value="image/png">Chuyển sang .PNG</option>
+                  <option value="image/jpeg">Chuyển sang .JPG</option>
+                  <option value="image/webp">Chuyển sang .WEBP</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button id="btnCopyActualImage" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition disabled:opacity-40 disabled:pointer-events-none" disabled>
+                <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Sao chép Ảnh (Clipboard)
+              </button>
+
+              <button id="btnDownloadImage" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition disabled:opacity-40 disabled:pointer-events-none" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Tải Ảnh Về Máy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 flex flex-col gap-5">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 shadow-sm h-full">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                Trạm Mã Base64 &amp; Nhúng URI (HTML / CSS)
+              </h2>
+              <p class="text-xs text-slate-500">Dán chuỗi Base64 / Data URI vào ô dưới để dịch ngược ra ảnh, hoặc chọn nút điền sẵn mã</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="btnPasteBase64Text" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+                <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Dán mã
+              </button>
+              <button id="btnClearCodeOnly" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+                Xóa ô mã
+              </button>
+              <button id="btnCopyMainCode" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Sao chép ô mã
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-700">Điền sẵn mẫu nhúng vào khung chính (Click để đổi định dạng &amp; sao chép):</span>
+              <span id="activeFormatBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Data URI (Chuẩn)</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button type="button" data-preset="datauri" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600 border border-indigo-600 text-white transition">
+                <span>🔗 Data URI (`data:image/...`)</span>
+              </button>
+              <button type="button" data-preset="html-img" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition">
+                <span>🏷️ Thẻ HTML `&lt;img&gt;`</span>
+              </button>
+              <button type="button" data-preset="css-bg" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition">
+                <span>🎨 CSS `background-image`</span>
+              </button>
+              <button type="button" data-preset="raw" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition">
+                <span>🧬 Mã Base64 Thuần</span>
+              </button>
+              <button type="button" data-preset="html-favicon" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition">
+                <span>⭐ HTML Favicon `&lt;link&gt;`</span>
+              </button>
+              <button type="button" data-preset="markdown" class="preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition">
+                <span>📝 Markdown `![img]()`</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="relative flex-1 flex flex-col">
+            <textarea
+              id="base64Textarea"
+              rows="10"
+              placeholder="Dán mã Base64, Data URI (data:image/png;base64,...), hoặc thẻ <img src='data:...'> vào đây rồi nhấn 'BIÊN DỊCH NGAY' để chuyển thành ảnh... Hoặc tải ảnh lên ở cột bên trái để lấy mã Base64 tại đây!"
+              class="w-full flex-1 min-h-[220px] rounded-xl bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 p-3.5 text-xs font-mono text-slate-800 placeholder-slate-400 resize-y leading-relaxed"
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <div class="space-y-2.5 pt-2 border-t border-slate-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">Khung Sao Chép Nhanh Nhúng Trực Tiếp (HTML &amp; CSS URI)</h3>
+              <span class="text-[11px] text-slate-500">Chỉ cần nhấn "Sao chép" và dán thẳng vào code</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-indigo-700 font-mono">&lt;img src="data:..." /&gt;</span>
+                  <button type="button" data-copy-snippet="html-img" class="quick-snippet-copy px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 transition">
+                    Sao chép HTML
+                  </button>
+                </div>
+                <input id="snippetHtmlImg" type="text" readonly placeholder="<img src=&quot;data:image/png;base64,...&quot; alt=&quot;image&quot; />" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-slate-700 focus:outline-none" />
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-pink-700 font-mono">CSS url("data:...")</span>
+                  <button type="button" data-copy-snippet="css-bg" class="quick-snippet-copy px-2.5 py-1 rounded-md text-[11px] font-semibold bg-pink-50 hover:bg-pink-600 text-pink-700 hover:text-white border border-pink-200 transition">
+                    Sao chép CSS
+                  </button>
+                </div>
+                <input id="snippetCssBg" type="text" readonly placeholder="background-image: url(&quot;data:image/png;base64,...&quot;);" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-slate-700 focus:outline-none" />
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-emerald-700 font-mono">Data URI (src / href)</span>
+                  <button type="button" data-copy-snippet="datauri" class="quick-snippet-copy px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 transition">
+                    Sao chép URI
+                  </button>
+                </div>
+                <input id="snippetDataUri" type="text" readonly placeholder="data:image/png;base64,..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-slate-700 focus:outline-none" />
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-amber-700 font-mono">Base64 Thuần (Raw)</span>
+                  <button type="button" data-copy-snippet="raw" class="quick-snippet-copy px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 transition">
+                    Sao chép Raw
+                  </button>
+                </div>
+                <input id="snippetRawB64" type="text" readonly placeholder="iVBORw0KGgoAAAANSUhEUgAA..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-slate-700 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    (function () {
+      const state = {
+        mode: 'img-to-b64',
+        sourceDataUri: '',
+        rawBase64: '',
+        mimeType: 'image/png',
+        fileName: 'image',
+        originalWidth: 0,
+        originalHeight: 0,
+        width: 0,
+        height: 0,
+        scalePercent: 100,
+        byteSize: 0,
+        activePreset: 'datauri',
+        stagedFile: null
+      };
+
+      const tabModeImgToB64 = document.getElementById('tabModeImgToB64');
+      const tabModeB64ToImg = document.getElementById('tabModeB64ToImg');
+      const chkAutoCompile = document.getElementById('chkAutoCompile');
+      const btnCompileNow = document.getElementById('btnCompileNow');
+      const compileBtnLabel = document.getElementById('compileBtnLabel');
+      const btnResetAll = document.getElementById('btnResetAll');
+      const btnLoadSample = document.getElementById('btnLoadSample');
+
+      const fileInput = document.getElementById('fileInput');
+      const btnTriggerUpload = document.getElementById('btnTriggerUpload');
+      const btnPasteClipboardImg = document.getElementById('btnPasteClipboardImg');
+      const dropZone = document.getElementById('dropZone');
+      const emptyImageState = document.getElementById('emptyImageState');
+      const previewImageWrapper = document.getElementById('previewImageWrapper');
+      const previewImage = document.getElementById('previewImage');
+
+      const origDimensionsLabel = document.getElementById('origDimensionsLabel');
+      const scalePercentBadge = document.getElementById('scalePercentBadge');
+      const scaleSlider = document.getElementById('scaleSlider');
+      const inputResizeWidth = document.getElementById('inputResizeWidth');
+      const inputResizeHeight = document.getElementById('inputResizeHeight');
+      const scalePresetBtns = document.querySelectorAll('.scale-preset-btn');
+
+      const metaMime = document.getElementById('metaMime');
+      const metaDimensions = document.getElementById('metaDimensions');
+      const metaFileSize = document.getElementById('metaFileSize');
+      const metaBase64Len = document.getElementById('metaBase64Len');
+
+      const exportFormatSelect = document.getElementById('exportFormatSelect');
+      const btnCopyActualImage = document.getElementById('btnCopyActualImage');
+      const btnDownloadImage = document.getElementById('btnDownloadImage');
+
+      const base64Textarea = document.getElementById('base64Textarea');
+      const btnPasteBase64Text = document.getElementById('btnPasteBase64Text');
+      const btnClearCodeOnly = document.getElementById('btnClearCodeOnly');
+      const btnCopyMainCode = document.getElementById('btnCopyMainCode');
+      const activeFormatBadge = document.getElementById('activeFormatBadge');
+
+      const snippetHtmlImg = document.getElementById('snippetHtmlImg');
+      const snippetCssBg = document.getElementById('snippetCssBg');
+      const snippetDataUri = document.getElementById('snippetDataUri');
+      const snippetRawB64 = document.getElementById('snippetRawB64');
+
+      const toastContainer = document.getElementById('toastContainer');
+
+      function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        const colors = {
+          success: 'bg-emerald-600 border-emerald-500 text-white',
+          info: 'bg-indigo-600 border-indigo-500 text-white',
+          error: 'bg-rose-600 border-rose-500 text-white'
+        };
+        toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-lg text-xs font-semibold transition-all duration-300 ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          setTimeout(() => toast.remove(), 250);
+        }, 2600);
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
+      }
+
+      async function copyTextToClipboard(text, label = 'mã') {
+        if (!text) {
+          showToast('Chưa có dữ liệu để sao chép!', 'error');
+          return;
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            showToast(`Đã sao chép ${label} vào Clipboard!`, 'success');
+            return;
+          }
+        } catch (err) {}
+        try {
+          const temp = document.createElement('textarea');
+          temp.value = text;
+          temp.style.position = 'fixed';
+          temp.style.opacity = '0';
+          document.body.appendChild(temp);
+          temp.focus();
+          temp.select();
+          document.execCommand('copy');
+          temp.remove();
+          showToast(`Đã sao chép ${label} vào Clipboard!`, 'success');
+        } catch (e) {
+          showToast('Không thể tự động sao chép, hãy nhấn Ctrl+C!', 'error');
+        }
+      }
+
+      function detectMimeFromBase64(b64) {
+        const trimmed = b64.trim();
+        if (trimmed.startsWith('iVBORw0KGgo')) return 'image/png';
+        if (trimmed.startsWith('/9j/')) return 'image/jpeg';
+        if (trimmed.startsWith('R0lGOD')) return 'image/gif';
+        if (trimmed.startsWith('UklGR')) return 'image/webp';
+        if (trimmed.startsWith('PHN2Zy') || trimmed.startsWith('PD94bW')) return 'image/svg+xml';
+        if (trimmed.startsWith('Qk')) return 'image/bmp';
+        if (trimmed.startsWith('AAABAA')) return 'image/x-icon';
+        return 'image/png';
+      }
+
+      function parseBase64Input(inputStr) {
+        let str = (inputStr || '').trim();
+        if (!str) return null;
+
+        const srcMatch = str.match(/(?:src|href)\s*=\s*["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1]) {
+          str = srcMatch[1].trim();
+        }
+
+        const urlMatch = str.match(/url\(\s*["']?([^"')]+)["']?\s*\)/i);
+        if (urlMatch && urlMatch[1]) {
+          str = urlMatch[1].trim();
+        }
+
+        const mdMatch = str.match(/!\[[^\]]*\]\(([^)]+)\)/);
+        if (mdMatch && mdMatch[1]) {
+          str = mdMatch[1].trim();
+        }
+
+        const dataUriMatch = str.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/i);
+        if (dataUriMatch) {
+          const mime = dataUriMatch[1].toLowerCase();
+          const raw = dataUriMatch[2].replace(/\s+/g, '');
+          return { mime, raw };
+        }
+
+        const cleanedRaw = str.replace(/^data:[^,]+,/i, '').replace(/\s+/g, '');
+        if (cleanedRaw.length < 8) return null;
+        const guessedMime = detectMimeFromBase64(cleanedRaw);
+        return { mime: guessedMime, raw: cleanedRaw };
+      }
+
+      function buildFormattedOutput(preset) {
+        if (!state.rawBase64) return '';
+        const dataUri = `data:${state.mimeType};base64,${state.rawBase64}`;
+        const dimAttrs = state.width && state.height ? ` width="${state.width}" height="${state.height}"` : '';
+        switch (preset) {
+          case 'datauri':
+            return dataUri;
+          case 'raw':
+            return state.rawBase64;
+          case 'html-img':
+            return `<img src="${dataUri}" alt="${state.fileName || 'image'}"${dimAttrs} />`;
+          case 'css-bg':
+            return `background-image: url("${dataUri}");`;
+          case 'html-favicon':
+            return `<link rel="icon" type="${state.mimeType}" href="${dataUri}" />`;
+          case 'markdown':
+            return `![${state.fileName || 'image'}](${dataUri})`;
+          default:
+            return dataUri;
+        }
+      }
+
+      function updateResizeControlsUI() {
+        const hasSource = Boolean(state.sourceDataUri && state.originalWidth > 0 && state.originalHeight > 0);
+        scaleSlider.disabled = !hasSource;
+        inputResizeWidth.disabled = !hasSource;
+        inputResizeHeight.disabled = !hasSource;
+        scalePresetBtns.forEach((b) => {
+          b.disabled = !hasSource;
+        });
+
+        if (!hasSource) {
+          origDimensionsLabel.textContent = 'Gốc: —';
+          scalePercentBadge.textContent = '100%';
+          scaleSlider.value = '100';
+          inputResizeWidth.value = '';
+          inputResizeHeight.value = '';
+          return;
+        }
+
+        origDimensionsLabel.textContent = `Gốc: ${state.originalWidth} × ${state.originalHeight} px`;
+        scalePercentBadge.textContent = `${state.scalePercent}%`;
+        scaleSlider.value = String(state.scalePercent);
+        inputResizeWidth.max = String(state.originalWidth);
+        inputResizeHeight.max = String(state.originalHeight);
+        inputResizeWidth.value = String(state.width);
+        inputResizeHeight.value = String(state.height);
+
+        scalePresetBtns.forEach((b) => {
+          const val = Number(b.getAttribute('data-scale'));
+          if (val === state.scalePercent) {
+            b.className = 'scale-preset-btn px-2 py-1 rounded text-[11px] font-semibold bg-indigo-600 text-white border border-indigo-600 transition disabled:opacity-40';
+          } else {
+            b.className = 'scale-preset-btn px-2 py-1 rounded text-[11px] font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition disabled:opacity-40';
+          }
+        });
+      }
+
+      function syncOutputs() {
+        const hasData = Boolean(state.rawBase64);
+        btnCopyActualImage.disabled = !hasData;
+        btnDownloadImage.disabled = !hasData;
+
+        updateResizeControlsUI();
+
+        if (!hasData) {
+          metaMime.textContent = '—';
+          metaDimensions.textContent = '—';
+          metaFileSize.textContent = '—';
+          metaBase64Len.textContent = '—';
+          snippetHtmlImg.value = '';
+          snippetCssBg.value = '';
+          snippetDataUri.value = '';
+          snippetRawB64.value = '';
+          return;
+        }
+
+        const dataUri = `data:${state.mimeType};base64,${state.rawBase64}`;
+        const approxBytes = state.byteSize || Math.floor((state.rawBase64.length * 3) / 4);
+
+        metaMime.textContent = state.mimeType.replace('image/', '').toUpperCase();
+        metaDimensions.textContent = state.width && state.height ? `${state.width} × ${state.height}` : '—';
+        metaFileSize.textContent = formatBytes(approxBytes);
+        metaBase64Len.textContent = `${state.rawBase64.length.toLocaleString('vi-VN')} ký tự`;
+
+        base64Textarea.value = buildFormattedOutput(state.activePreset);
+
+        snippetHtmlImg.value = buildFormattedOutput('html-img');
+        snippetCssBg.value = buildFormattedOutput('css-bg');
+        snippetDataUri.value = dataUri;
+        snippetRawB64.value = state.rawBase64;
+      }
+
+      function applyDownscaleAndCompile(targetW, targetH, compileToOutputs = true) {
+        if (!state.sourceDataUri || !state.originalWidth || !state.originalHeight) return;
+
+        const clampedW = Math.max(1, Math.min(state.originalWidth, Math.round(targetW)));
+        const clampedH = Math.max(1, Math.min(state.originalHeight, Math.round(targetH)));
+
+        state.width = clampedW;
+        state.height = clampedH;
+        state.scalePercent = Math.min(100, Math.max(1, Math.round((clampedW / state.originalWidth) * 100)));
+
+        if (clampedW === state.originalWidth && clampedH === state.originalHeight) {
+          const parsedOrig = parseBase64Input(state.sourceDataUri);
+          if (parsedOrig) {
+            previewImage.src = state.sourceDataUri;
+            if (compileToOutputs) {
+              state.rawBase64 = parsedOrig.raw;
+              state.mimeType = parsedOrig.mime;
+              state.byteSize = Math.floor((parsedOrig.raw.length * 3) / 4);
+              syncOutputs();
+            } else {
+              updateResizeControlsUI();
+              metaDimensions.textContent = `${state.width} × ${state.height}`;
+            }
+          }
+          return;
+        }
+
+        const img = new Image();
+        img.onload = function () {
+          const canvas = document.createElement('canvas');
+          canvas.width = clampedW;
+          canvas.height = clampedH;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, clampedW, clampedH);
+
+          const outMime = (state.mimeType === 'image/jpeg' || state.mimeType === 'image/webp') ? state.mimeType : 'image/png';
+          const resizedDataUri = canvas.toDataURL(outMime, 0.92);
+          const parsedResized = parseBase64Input(resizedDataUri);
+
+          previewImage.src = resizedDataUri;
+          if (parsedResized && compileToOutputs) {
+            state.rawBase64 = parsedResized.raw;
+            state.mimeType = parsedResized.mime;
+            state.byteSize = Math.floor((parsedResized.raw.length * 3) / 4);
+            syncOutputs();
+          } else {
+            updateResizeControlsUI();
+            metaDimensions.textContent = `${state.width} × ${state.height}`;
+          }
+        };
+        img.src = state.sourceDataUri;
+      }
+
+      scaleSlider.addEventListener('input', function () {
+        if (!state.originalWidth || !state.originalHeight) return;
+        const pct = Math.min(100, Math.max(1, Number(scaleSlider.value) || 100));
+        const newW = Math.max(1, Math.round((state.originalWidth * pct) / 100));
+        const newH = Math.max(1, Math.round((state.originalHeight * pct) / 100));
+        applyDownscaleAndCompile(newW, newH, chkAutoCompile.checked || Boolean(state.rawBase64));
+      });
+
+      scalePresetBtns.forEach((btn) => {
+        btn.addEventListener('click', function () {
+          if (!state.originalWidth || !state.originalHeight) return;
+          const pct = Math.min(100, Math.max(1, Number(btn.getAttribute('data-scale')) || 100));
+          const newW = Math.max(1, Math.round((state.originalWidth * pct) / 100));
+          const newH = Math.max(1, Math.round((state.originalHeight * pct) / 100));
+          applyDownscaleAndCompile(newW, newH, true);
+          showToast(`Đã chỉnh kích thước xuống ${pct}% (${newW} × ${newH} px)`, 'info');
+        });
+      });
+
+      inputResizeWidth.addEventListener('change', function () {
+        if (!state.originalWidth || !state.originalHeight) return;
+        let valW = Number(inputResizeWidth.value) || state.originalWidth;
+        if (valW > state.originalWidth) {
+          valW = state.originalWidth;
+          showToast(`Chỉ cho phép chỉnh thấp hơn hoặc bằng ảnh gốc (${state.originalWidth}px)!`, 'info');
+        }
+        valW = Math.max(1, valW);
+        const ratio = state.originalHeight / state.originalWidth;
+        const valH = Math.max(1, Math.min(state.originalHeight, Math.round(valW * ratio)));
+        applyDownscaleAndCompile(valW, valH, true);
+      });
+
+      inputResizeHeight.addEventListener('change', function () {
+        if (!state.originalWidth || !state.originalHeight) return;
+        let valH = Number(inputResizeHeight.value) || state.originalHeight;
+        if (valH > state.originalHeight) {
+          valH = state.originalHeight;
+          showToast(`Chỉ cho phép chỉnh thấp hơn hoặc bằng ảnh gốc (${state.originalHeight}px)!`, 'info');
+        }
+        valH = Math.max(1, valH);
+        const ratio = state.originalWidth / state.originalHeight;
+        const valW = Math.max(1, Math.min(state.originalWidth, Math.round(valH * ratio)));
+        applyDownscaleAndCompile(valW, valH, true);
+      });
+
+      function setMode(newMode) {
+        state.mode = newMode;
+        if (newMode === 'img-to-b64') {
+          tabModeImgToB64.className = 'flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-sm';
+          tabModeB64ToImg.className = 'flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900';
+          compileBtnLabel.textContent = 'BIÊN DỊCH ẢNH ➔ BASE64';
+        } else {
+          tabModeB64ToImg.className = 'flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-sm';
+          tabModeImgToB64.className = 'flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900';
+          compileBtnLabel.textContent = 'BIÊN DỊCH BASE64 ➔ ẢNH';
+        }
+      }
+
+      tabModeImgToB64.addEventListener('click', () => setMode('img-to-b64'));
+      tabModeB64ToImg.addEventListener('click', () => setMode('b64-to-img'));
+
+      function processImageFile(file, executeCompileImmediately = true) {
+        if (!file) return;
+        state.stagedFile = file;
+        const cleanName = (file.name || 'image').replace(/\.[^/.]+$/, '');
+        state.fileName = cleanName || 'image';
+        state.byteSize = file.size || 0;
+        state.mimeType = file.type || 'image/png';
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const resultDataUri = e.target.result;
+          const parsed = parseBase64Input(resultDataUri);
+          if (!parsed) {
+            showToast('Không thể đọc dữ liệu từ file ảnh này!', 'error');
+            return;
+          }
+
+          const probeImg = new Image();
+          probeImg.onload = function () {
+            state.sourceDataUri = resultDataUri;
+            state.originalWidth = probeImg.naturalWidth || 1;
+            state.originalHeight = probeImg.naturalHeight || 1;
+            state.width = state.originalWidth;
+            state.height = state.originalHeight;
+            state.scalePercent = 100;
+
+            previewImage.src = resultDataUri;
+            emptyImageState.classList.add('hidden');
+            previewImageWrapper.classList.remove('hidden');
+
+            if (executeCompileImmediately) {
+              state.rawBase64 = parsed.raw;
+              state.mimeType = parsed.mime;
+              syncOutputs();
+              showToast('Đã biên dịch ảnh sang mã Base64 & URI!', 'success');
+            } else {
+              updateResizeControlsUI();
+              metaMime.textContent = state.mimeType.replace('image/', '').toUpperCase();
+              metaDimensions.textContent = `${state.width} × ${state.height}`;
+              metaFileSize.textContent = formatBytes(state.byteSize);
+              metaBase64Len.textContent = 'Nhấn "Biên dịch ngay"';
+              showToast('Đã tải ảnh lên! Nhấn "Biên dịch ngay" để xuất mã Base64.', 'info');
+            }
+          };
+          probeImg.src = resultDataUri;
+        };
+        reader.onerror = function () {
+          showToast('Lỗi khi đọc file ảnh!', 'error');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function compileBase64ToImage(inputString) {
+        const parsed = parseBase64Input(inputString);
+        if (!parsed || !parsed.raw) {
+          showToast('Vui lòng dán mã Base64 hoặc Data URI hợp lệ vào ô mã!', 'error');
+          return;
+        }
+
+        const candidateDataUri = `data:${parsed.mime};base64,${parsed.raw}`;
+        const testImg = new Image();
+        testImg.onload = function () {
+          state.sourceDataUri = candidateDataUri;
+          state.rawBase64 = parsed.raw;
+          state.mimeType = parsed.mime;
+          state.originalWidth = testImg.naturalWidth || 1;
+          state.originalHeight = testImg.naturalHeight || 1;
+          state.width = state.originalWidth;
+          state.height = state.originalHeight;
+          state.scalePercent = 100;
+          state.byteSize = Math.floor((parsed.raw.length * 3) / 4);
+
+          previewImage.src = candidateDataUri;
+          emptyImageState.classList.add('hidden');
+          previewImageWrapper.classList.remove('hidden');
+
+          syncOutputs();
+          showToast('Đã dịch mã Base64 sang Ảnh thành công!', 'success');
+        };
+        testImg.onerror = function () {
+          showToast('Mã Base64 không hợp lệ hoặc bị cắt cụt, không thể dựng thành ảnh!', 'error');
+        };
+        testImg.src = candidateDataUri;
+      }
+
+      btnCompileNow.addEventListener('click', function () {
+        const textVal = base64Textarea.value.trim();
+
+        if (state.mode === 'img-to-b64' && state.sourceDataUri) {
+          applyDownscaleAndCompile(state.width, state.height, true);
+          showToast('Đã biên dịch ảnh với kích thước đã chọn sang mã Base64!', 'success');
+          return;
+        }
+
+        if (textVal) {
+          compileBase64ToImage(textVal);
+          return;
+        }
+
+        if (state.sourceDataUri) {
+          applyDownscaleAndCompile(state.width, state.height, true);
+          return;
+        }
+
+        showToast('Hãy tải một bức ảnh lên hoặc dán mã Base64 vào ô trước khi nhấn Biên dịch!', 'info');
+      });
+
+      btnTriggerUpload.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', function (e) {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          setMode('img-to-b64');
+          processImageFile(file, chkAutoCompile.checked);
+        }
+      });
+
+      ['dragenter', 'dragover'].forEach((evtName) => {
+        dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('border-indigo-500', 'ring-2', 'ring-indigo-500/30');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((evtName) => {
+        dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('border-indigo-500', 'ring-2', 'ring-indigo-500/30');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length > 0) {
+          setMode('img-to-b64');
+          processImageFile(files[0], chkAutoCompile.checked);
+        }
+      });
+
+      window.addEventListener('paste', (e) => {
+        if (!e.clipboardData) return;
+        const items = e.clipboardData.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) {
+              e.preventDefault();
+              setMode('img-to-b64');
+              processImageFile(blob, chkAutoCompile.checked);
+              return;
+            }
+          }
+        }
+      });
+
+      btnPasteClipboardImg.addEventListener('click', async () => {
+        try {
+          if (navigator.clipboard && navigator.clipboard.read) {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+              const imageType = item.types.find((t) => t.startsWith('image/'));
+              if (imageType) {
+                const blob = await item.getType(imageType);
+                const file = new File([blob], 'clipboard-image.png', { type: imageType });
+                setMode('img-to-b64');
+                processImageFile(file, chkAutoCompile.checked);
+                return;
+              }
+            }
+          }
+          showToast('Hãy nhấn tổ hợp phím Ctrl + V để dán ảnh từ Clipboard!', 'info');
+        } catch (err) {
+          showToast('Hãy nhấn trực tiếp Ctrl + V trên bàn phím để dán ảnh!', 'info');
+        }
+      });
+
+      btnPasteBase64Text.addEventListener('click', async () => {
+        try {
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+              base64Textarea.value = text;
+              setMode('b64-to-img');
+              compileBase64ToImage(text);
+              return;
+            }
+          }
+          base64Textarea.focus();
+          showToast('Hãy nhấn Ctrl + V vào ô mã Base64 rồi bấm Biên dịch!', 'info');
+        } catch (e) {
+          base64Textarea.focus();
+          showToast('Hãy nhấn Ctrl + V trực tiếp vào ô mã Base64!', 'info');
+        }
+      });
+
+      const presetLabels = {
+        'datauri': 'Data URI (Chuẩn)',
+        'html-img': 'Thẻ HTML <img>',
+        'css-bg': 'CSS background-image',
+        'raw': 'Mã Base64 Thuần',
+        'html-favicon': 'HTML Favicon <link>',
+        'markdown': 'Markdown ![img]()'
+      };
+
+      document.querySelectorAll('.preset-format-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.getAttribute('data-preset');
+          state.activePreset = preset;
+          activeFormatBadge.textContent = presetLabels[preset] || preset;
+
+          document.querySelectorAll('.preset-format-btn').forEach((b) => {
+            b.className = 'preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 transition';
+          });
+          btn.className = 'preset-format-btn flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600 border border-indigo-600 text-white transition';
+
+          if (state.rawBase64) {
+            const formatted = buildFormattedOutput(preset);
+            base64Textarea.value = formatted;
+            copyTextToClipboard(formatted, presetLabels[preset]);
+          } else if (base64Textarea.value.trim()) {
+            compileBase64ToImage(base64Textarea.value.trim());
+          } else {
+            showToast(`Đã chọn mẫu ${presetLabels[preset]}! Hãy tải ảnh lên hoặc dán mã.`, 'info');
+          }
+        });
+      });
+
+      document.querySelectorAll('.quick-snippet-copy').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const snippetType = btn.getAttribute('data-copy-snippet');
+          if (!state.rawBase64 && base64Textarea.value.trim()) {
+            compileBase64ToImage(base64Textarea.value.trim());
+          }
+          const code = buildFormattedOutput(snippetType);
+          copyTextToClipboard(code, presetLabels[snippetType] || 'đoạn mã');
+        });
+      });
+
+      btnCopyMainCode.addEventListener('click', () => {
+        copyTextToClipboard(base64Textarea.value.trim(), activeFormatBadge.textContent);
+      });
+
+      btnClearCodeOnly.addEventListener('click', () => {
+        base64Textarea.value = '';
+        base64Textarea.focus();
+        showToast('Đã làm trống ô mã Base64!', 'info');
+      });
+
+      btnResetAll.addEventListener('click', () => {
+        state.sourceDataUri = '';
+        state.rawBase64 = '';
+        state.mimeType = 'image/png';
+        state.fileName = 'image';
+        state.originalWidth = 0;
+        state.originalHeight = 0;
+        state.width = 0;
+        state.height = 0;
+        state.scalePercent = 100;
+        state.byteSize = 0;
+        state.stagedFile = null;
+        fileInput.value = '';
+        base64Textarea.value = '';
+        previewImage.src = '';
+        previewImageWrapper.classList.add('hidden');
+        emptyImageState.classList.remove('hidden');
+        syncOutputs();
+        showToast('Đã làm mới toàn bộ công cụ — sẵn sàng cho ảnh hoặc mã mới!', 'info');
+      });
+
+      document.querySelectorAll('.bg-ExplainBtn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const bgClass = btn.getAttribute('data-bg');
+          dropZone.classList.remove('checkerboard-dark', 'checkerboard-light', 'bg-solid-dark', 'bg-solid-white');
+          dropZone.classList.add(bgClass);
+
+          document.querySelectorAll('.bg-ExplainBtn').forEach((b) => {
+            b.className = 'bg-ExplainBtn px-1.5 py-0.5 rounded text-slate-700 hover:bg-slate-100';
+          });
+          btn.className = 'bg-ExplainBtn px-1.5 py-0.5 rounded bg-indigo-600 text-white font-medium';
+        });
+      });
+
+      function renderImageToCanvas() {
+        return new Promise((resolve, reject) => {
+          if (!state.rawBase64) {
+            reject(new Error('No image'));
+            return;
+          }
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = state.width || img.naturalWidth || 512;
+            canvas.height = state.height || img.naturalHeight || 512;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas);
+          };
+          img.onerror = reject;
+          img.src = `data:${state.mimeType};base64,${state.rawBase64}`;
+        });
+      }
+
+      btnCopyActualImage.addEventListener('click', async () => {
+        if (!state.rawBase64) return;
+        try {
+          const canvas = await renderImageToCanvas();
+          if (navigator.clipboard && window.ClipboardItem) {
+            const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast('Đã sao chép trực tiếp hình ảnh vào Clipboard (có thể Ctrl+V vào Word, Paint, Chat...)', 'success');
+            return;
+          }
+        } catch (err) {}
+        const dataUri = `data:${state.mimeType};base64,${state.rawBase64}`;
+        await copyTextToClipboard(dataUri, 'Data URI của ảnh');
+      });
+
+      btnDownloadImage.addEventListener('click', async () => {
+        if (!state.rawBase64) return;
+        const selectedFormat = exportFormatSelect.value;
+        let targetMime = selectedFormat === 'original' ? state.mimeType : selectedFormat;
+        let downloadDataUrl = `data:${state.mimeType};base64,${state.rawBase64}`;
+
+        const extMap = {
+          'image/png': 'png',
+          'image/jpeg': 'jpg',
+          'image/webp': 'webp',
+          'image/gif': 'gif',
+          'image/svg+xml': 'svg',
+          'image/bmp': 'bmp',
+          'image/x-icon': 'ico'
+        };
+
+        if (selectedFormat !== 'original' && selectedFormat !== state.mimeType) {
+          try {
+            const canvas = await renderImageToCanvas();
+            downloadDataUrl = canvas.toDataURL(targetMime, 0.94);
+          } catch (e) {
+            targetMime = state.mimeType;
+          }
+        }
+
+        const ext = extMap[targetMime] || 'png';
+        const link = document.createElement('a');
+        link.href = downloadDataUrl;
+        link.download = `${state.fileName || 'decoded-image'}-${state.width}x${state.height}.${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showToast(`Đã tải ảnh ${link.download} về máy!`, 'success');
+      });
+
+      function loadSampleDemoImage() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 480;
+        canvas.height = 260;
+        const ctx = canvas.getContext('2d');
+
+        const grad = ctx.createLinearGradient(0, 0, 480, 260);
+        grad.addColorStop(0, '#4f46e5');
+        grad.addColorStop(0.5, '#9333ea');
+        grad.addColorStop(1, '#ec4899');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 480, 260, 24);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        ctx.beginPath();
+        ctx.arc(410, 50, 70, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(60, 220, 55, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px Inter, sans-serif';
+        ctx.fillText('BASE64 IMAGE STUDIO', 36, 95);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.font = '500 16px Inter, sans-serif';
+        ctx.fillText('Ảnh ⇄ Base64 • Nhúng HTML & CSS URI', 36, 132);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+        ctx.beginPath();
+        ctx.roundRect(36, 165, 290, 44, 12);
+        ctx.fill();
+
+        ctx.fillStyle = '#a5f3fc';
+        ctx.font = '600 14px JetBrains Mono, monospace';
+        ctx.fillText('data:image/png;base64,iVBORw0K...', 52, 192);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const parsed = parseBase64Input(dataUrl);
+        if (parsed) {
+          state.sourceDataUri = dataUrl;
+          state.fileName = 'base64-studio-sample';
+          state.mimeType = 'image/png';
+          state.rawBase64 = parsed.raw;
+          state.originalWidth = 480;
+          state.originalHeight = 260;
+          state.width = 480;
+          state.height = 260;
+          state.scalePercent = 100;
+          state.byteSize = Math.floor((parsed.raw.length * 3) / 4);
+
+          previewImage.src = dataUrl;
+          emptyImageState.classList.add('hidden');
+          previewImageWrapper.classList.remove('hidden');
+          syncOutputs();
+          showToast('Đã nạp ảnh mẫu và biên dịch sang Base64!', 'success');
+        }
+      }
+
+      btnLoadSample.addEventListener('click', loadSampleDemoImage);
+
+      window.addEventListener('load', () => {
+        loadSampleDemoImage();
+      });
+    })();
+  </script>
+</body>
+</html>
